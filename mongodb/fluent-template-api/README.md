@@ -23,7 +23,6 @@ Using `as(Jedi.class)` switches return type mapping from `SWCharacter` to `Jedi`
 So far no actual query execution has been invoked. Calling on of the terminating methods like `one()`, `first()`, `all()`,... triggers the query.
  
 ```java
-
 mongoOps.query(SWCharacter.class)
   .inCollection("star-wars")
   .as(Jedi.class)
@@ -31,6 +30,21 @@ mongoOps.query(SWCharacter.class)
   .one();
 
 ```
+
+Different stages in the command essembly process allow to seamlessly switch to different API paths. Using `near` instead of `matching` switches to the path for geo queries requireing the presence of a `NearQuery` while altering the command result type from `List` to `GeoResults` and limiting terminating operations to just `all()`.
+
+```java
+
+NearQuery alderaanWithin3Parsecs = NearQuery.near(-73.9667, 40.78)
+  .maxDistance(new Distance(3, MILES))
+  .spherical(true);
+
+GeoResults<Jedi> results = mongoOps.query(SWCharacter.class)
+  .as(Jedi.class)
+  .near(alderaanWithin3Parsecs)
+  .all();
+```
+
 
 ### Update
 

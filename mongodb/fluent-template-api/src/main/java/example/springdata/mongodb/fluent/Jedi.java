@@ -17,12 +17,14 @@ package example.springdata.mongodb.fluent;
 
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
+import lombok.ToString;
 
 /**
  * @author Christoph Strobl
  */
 @Getter
 @EqualsAndHashCode(callSuper = true)
+@ToString
 class Jedi extends SWCharacter {
 
 	private final String lastname;

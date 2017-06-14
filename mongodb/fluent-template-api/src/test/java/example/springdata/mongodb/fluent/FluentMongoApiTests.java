@@ -16,6 +16,7 @@
 package example.springdata.mongodb.fluent;
 
 import static org.assertj.core.api.Assertions.*;
+import static org.springframework.data.geo.Metrics.*;
 import static org.springframework.data.mongodb.core.query.Criteria.*;
 import static org.springframework.data.mongodb.core.query.Query.*;
 import static org.springframework.data.mongodb.core.query.Update.*;
@@ -28,14 +29,28 @@ import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.dao.IncorrectResultSizeDataAccessException;
+import org.springframework.data.geo.Distance;
+import org.springframework.data.geo.GeoResults;
 import org.springframework.data.mongodb.core.ExecutableFindOperation.TerminatingFindOperation;
 import org.springframework.data.mongodb.core.FluentMongoOperations;
 import org.springframework.data.mongodb.core.MongoOperations;
+import org.springframework.data.mongodb.core.query.NearQuery;
 import org.springframework.test.context.junit4.SpringRunner;
 
 import com.mongodb.client.result.UpdateResult;
 
 /**
+ * Some tests showing usage and capabilities of {@link FluentMongoOperations}. <br />
+ * Please note index and testdata setup in {@link ApplicationConfiguration} with
+ * <dl>
+ * <dt>3 Planets</dt>
+ * <dd>alderaan, stewjon, tatooine</dd>
+ * <dt>4 Jedis</dt>
+ * <dd>anakin, leia, luke, obi-wan</dd>
+ * <dt>1 Human</dt>
+ * <dd>han</dd>
+ * </dl>
+ *
  * @author Christoph Strobl
  */
 @RunWith(SpringRunner.class)
@@ -48,6 +63,9 @@ public class FluentMongoApiTests {
 	 * A predefined, reusable lookup method.
 	 */
 	TerminatingFindOperation<Jedi> findLuke;
+
+	final NearQuery alderaanWithin3Parsecs = NearQuery.near(-73.9667, 40.78).maxDistance(new Distance(3, MILES))
+			.spherical(true);
 
 	@Before
 	public void setUp() {
@@ -124,6 +142,32 @@ public class FluentMongoApiTests {
 	}
 
 	/**
+	 * GeoNear operations can be executed via {@code near} which needs to be given a {@link NearQuery}. By doing so the
+	 * API will from then on only provide methods suitable for executing a {@literal near} query. In this case options
+	 * like {@code first()} or {@code one()} are no longer available. Even the return type for {@code all()} switches from
+	 * {@link List} to {@link GeoResults}. <br />
+	 * Still it is possible to map the {@code content} of a single {@link org.springframework.data.geo.GeoResult} to a
+	 * different type using {@code as(Class)}. <br />
+	 * The samples below would read something like the following using classic {@link MongoOperations}.
+	 *
+	 * <pre>
+	 *     <code>
+	 *         template.geoNear(alderaanWithin3Parsecs, SWCharacter.class, "star-wars", Jedi.class);
+	 *     </code>
+	 * </pre>
+	 */
+	@Test
+	public void geoNearQuery() {
+
+		GeoResults<Jedi> results = mongoOps.query(SWCharacter.class) // SWCharacter defines collection, id and name
+				.as(Jedi.class) // but we want to map the results to Jedi
+				.near(alderaanWithin3Parsecs) // and find those with home planet near alderaan
+				.all();
+
+		assertThat(results.getContent()).hasSize(2);
+	}
+
+	/**
 	 * In this case {@link Human} does not have an explicit {@link org.springframework.data.mongodb.core.mapping.Document}
 	 * annotation which results in {@literal human} as the default collection name. Via {@code inCollection(String)} it is
 	 * possible to override the default and set it to whatever collection should be queried. <br />
@@ -154,10 +198,10 @@ public class FluentMongoApiTests {
 	@Test
 	public void justInsertOne() {
 
-		SWCharacter obiWan = new Jedi("obi-wan", "kenobi");
+		SWCharacter chewbacca = new SWCharacter("Chewbacca");
 
-		mongoOps.insert(SWCharacter.class).one(obiWan);
-		assertThat(obiWan.getId()).isNotBlank();
+		mongoOps.insert(SWCharacter.class).one(chewbacca);
+		assertThat(chewbacca.getId()).isNotBlank();
 	}
 
 	/**
@@ -176,9 +220,6 @@ public class FluentMongoApiTests {
 	@Test
 	public void updateAndUpsert() {
 
-		/*
-		 * template.upsert(query(where("lastname").is("windu")), update("name", "mence"), Jedi.class, "star-wars");
-		 */
 		UpdateResult result = mongoOps.update(Jedi.class) // Jedi defines the collection and field mapping
 				.matching(query(where("lastname").is("windu"))) // so "last" maps to "lastname".
 				.apply(update("name", "mence")) // We'll update the "firstname" to "mence"

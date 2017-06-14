@@ -15,29 +15,18 @@
  */
 package example.springdata.mongodb.fluent;
 
-import lombok.EqualsAndHashCode;
-import lombok.Getter;
+import lombok.Data;
 
-import lombok.Setter;
 import org.springframework.data.annotation.Id;
-import org.springframework.data.mongodb.core.mapping.Document;
-import org.springframework.data.mongodb.core.mapping.Field;
+import org.springframework.data.geo.Point;
+import org.springframework.data.mongodb.core.index.GeoSpatialIndexed;
 
 /**
  * @author Christoph Strobl
  */
-@Document(collection = "star-wars")
-@Getter
-@Setter
-@EqualsAndHashCode(of = "name")
-class SWCharacter {
+@Data
+public class Planet {
 
-	private @Id String id;
-	private @Field("firstname") String name;
-	private Planet homePlanet;
-
-	SWCharacter(String name) {
-		this.name = name;
-	}
-
+	final @Id String name;
+	final @GeoSpatialIndexed Point coordinates;
 }
